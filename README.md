@@ -9,7 +9,7 @@
 1. Se transforma el archivo .py a un .exe
    > Se desarrolló en python 3.11.3, un archivo.ico de pdf y un ambiente personalizado con anaconda.
 2. Se instalan las librerias necesarias para el desarrollo:
-	-pyinput:
+	-pyinput
 	-string
 	-smtplib
 	-email.mime.multipart
