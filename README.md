@@ -1,5 +1,11 @@
 # Proyecto_Redes_Keylogger
 
+#### Integrantes:
+	- Leonardo Trujillo.
+ 	- Dayanna Pampas.
+  	- César Morón.
+   	- David Sen.
+
 ## Aplicativo diseñado para el aprendizaje del funcionamiento de un backdoor en un sistema operativo
 
 ### Condiciones:
